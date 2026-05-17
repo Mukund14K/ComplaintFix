@@ -1,0 +1,17 @@
+# Local Server Environment Overrides
+.env
+config.local.php
+
+# Operating System Metadata Clutter
+Thumbs.db
+.DS_Store
+
+# Text Editor / IDE Workspaces
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Runtime / Uploaded Assets
+views/uploads/
+uploads/
