@@ -17,13 +17,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cat = mysqli_real_escape_string($conn, $_POST['category']);
     $desc = mysqli_real_escape_string($conn, $_POST['description']);
     $priority = mysqli_real_escape_string($conn, $_POST['priority']); 
-    $location = mysqli_real_escape_string($conn, $_POST['location']); // New field capture
+    $location = mysqli_real_escape_string($conn, $_POST['location']); 
     $is_anonymous = isset($_POST['anonymous']) ? 1 : 0;
     $date = date('Y-m-d'); 
     $status = "Pending"; 
 
-    $sql = "INSERT INTO complaints (user_id, category, description, priority, status, created_at, location) 
-            VALUES ('$uid', '$cat', '$desc', '$priority', '$status', '$date', '$location')";
+    $attachment_path = ""; // Default empty state if no validation proof is provided
+
+    // NEW: Server-Side File Upload Processor Logic Pipeline
+    if (isset($_FILES['evidence']) && $_FILES['evidence']['error'] == 0) {
+        $target_dir = "uploads/";
+        
+        // Dynamic directory safe guard: build folder automatically if missing
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+
+        // Sanitize file names by prepping with a unique timestamp signature to avoid namespace collision
+        $file_name = time() . "_" . basename($_FILES["evidence"]["name"]);
+        $target_file = $target_dir . $file_name;
+        $file_type = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+
+        // Enforce maximum file limit boundary constraint of 5MB
+        if ($_FILES["evidence"]["size"] <= 5242880) {
+            // Move binary stream out of volatile temp memory into persistent disk allocation
+            if (move_uploaded_file($_FILES["evidence"]["tmp_name"], $target_file)) {
+                $attachment_path = mysqli_real_escape_string($conn, $target_file);
+            }
+        } else {
+            echo "<script>alert('Error: Attachment exceeds maximum allowed file payload parameter of 5MB.');</script>";
+        }
+    }
+
+    // FIXED: Query structured parameters updated to store both location string AND attachment file path string fields natively
+    $sql = "INSERT INTO complaints (user_id, category, description, priority, status, created_at, location, attachment) 
+            VALUES ('$uid', '$cat', '$desc', '$priority', '$status', '$date', '$location', '$attachment_path')";
 
     if ($conn->query($sql) === TRUE) {
         header("Location: submission_success.php");
@@ -126,11 +154,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div>
                         <label class="block text-[10px] uppercase tracking-widest font-bold text-[#3E2723] opacity-60 mb-4">Supporting Evidence</label>
                         <div class="upload-zone rounded-lg p-10 flex flex-col items-center justify-center text-center cursor-pointer relative">
-                            <input type="file" name="evidence" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            <div class="text-[#C5A059] opacity-40 mb-4">
+                            <input type="file" name="evidence" id="evidenceInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileInfo()">
+                            <div class="text-[#C5A059] opacity-40 mb-4" id="uploadIcon">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                             </div>
-                            <p class="text-sm text-[#3E2723] font-medium">Drag & drop files or <span class="text-[#C5A059] underline">browse</span></p>
+                            <p class="text-sm text-[#3E2723] font-medium" id="uploadStatusText">Drag & drop files or <span class="text-[#C5A059] underline">browse</span></p>
                         </div>
                     </div>
                 </div>
@@ -176,5 +204,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
         </form>
     </main>
+
+    <script>
+    // UX feedback helper: displays the uploaded filename dynamically inside the upload box container boundaries
+    function updateFileInfo() {
+        const fileInput = document.getElementById('evidenceInput');
+        const statusText = document.getElementById('uploadStatusText');
+        const iconContainer = document.getElementById('uploadIcon');
+        
+        if (fileInput.files.length > 0) {
+            const fileName = fileInput.files[0].name;
+            statusText.innerHTML = "Selected file: <span class='text-[#C5A059] font-mono font-bold'>" + fileName + "</span>";
+            iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+        }
+    }
+    </script>
 </body>
 </html>

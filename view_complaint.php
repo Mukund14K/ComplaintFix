@@ -10,7 +10,7 @@ include 'db.php';
 $user_id = $_SESSION['user_id'];
 $complaint_id = mysqli_real_escape_string($conn, $_GET['id']);
 
-// Fetch specific complaint details
+// Fetch specific complaint details (including location and optional file/attachment path)
 $query = "SELECT * FROM complaints WHERE complaint_id = '$complaint_id' AND user_id = '$user_id'";
 $result = $conn->query($query);
 $data = $result->fetch_assoc();
@@ -90,6 +90,44 @@ if (!$data) {
                     <div class="mb-8">
                         <label class="text-[10px] uppercase tracking-widest font-bold text-[#3E2723] opacity-60">Detailed Statement</label>
                         <p class="text-md text-[#3E2723] leading-relaxed mt-4 whitespace-pre-wrap"><?php echo htmlspecialchars($data['description']); ?></p>
+                    </div>
+
+                    <div class="mb-8 pt-6 border-t border-gray-100">
+                        <label class="text-[10px] uppercase tracking-widest font-bold text-[#3E2723] opacity-60">Uploaded Evidence / Proof</label>
+                        <div class="mt-4">
+                            <?php if (!empty($data['attachment']) && file_exists($data['attachment'])): ?>
+                                <?php 
+                                $file_ext = strtolower(pathinfo($data['attachment'], PATHINFO_EXTENSION));
+                                $image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                                ?>
+                                
+                                <?php if (in_array($file_ext, $image_extensions)): ?>
+                                    <div class="max-w-md rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50 p-2">
+                                        <img src="<?php echo htmlspecialchars($data['attachment']); ?>" alt="Uploaded Proof" class="w-full h-auto object-contain max-h-80 rounded">
+                                        <div class="mt-2 p-2 flex justify-between items-center bg-white rounded border border-gray-100">
+                                            <span class="text-xs text-gray-500 font-mono truncate max-w-[200px]"><?php echo basename($data['attachment']); ?></span>
+                                            <a href="<?php echo htmlspecialchars($data['attachment']); ?>" download class="text-xs font-bold text-[#4A0E0E] hover:underline uppercase tracking-wider">Download Image</a>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-md">
+                                        <div class="p-3 bg-[#4A0E0E]/10 rounded text-[#4A0E0E] font-bold font-mono text-xs uppercase">
+                                            <?php echo $file_ext; ?>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-[#3E2723] truncate"><?php echo basename($data['attachment']); ?></p>
+                                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Document File Attachment</p>
+                                        </div>
+                                        <a href="<?php echo htmlspecialchars($data['attachment']); ?>" download class="px-4 py-2 bg-[#4A0E0E] text-[#FCF9F2] text-xs font-bold rounded hover:opacity-90 transition-all uppercase tracking-wider">
+                                            Download
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                                
+                            <?php else: ?>
+                                <p class="text-sm text-gray-400 italic">No media documentation or evidence files attached to this filing.</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
                     <div class="mt-12 pt-10 border-t border-gray-100">
